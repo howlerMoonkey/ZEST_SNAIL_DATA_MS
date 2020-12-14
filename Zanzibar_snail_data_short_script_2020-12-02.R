@@ -226,3 +226,4 @@ ziformula = ~1 ## zero inflation testing
 
 ## interactions- site type and flow- eg river vs pond and flow
 ## prevalence models- add data
+## binomial models
