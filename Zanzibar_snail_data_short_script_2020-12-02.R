@@ -30,7 +30,7 @@ source("HighstatLibV10.R")
 #############################################
 #############################################
 
-data<-read.csv("ZEST_snail_data_2020-12-11.csv")
+data<-read.csv("ZEST_snail_data_2021-01-01.csv")
 
 dim(data)
 names(data)
@@ -73,7 +73,9 @@ data_ed <- data1 %>%
                 Bglob, Bfor, Lym, Mel, Cleo, Pila, Lan, Cera, Neri, Thiara,
                 mud, sand, gravel, rock, concrete, peat, roots, include,
                 Lilies, rushes, rice, waterhyacinth, macrophyteweed, palmfronds,
-                sedge, grass, Polygonum, none, Otherveg, monthly_precip, niclo_order, month_survey_order)
+                sedge, grass, Polygonum, none, Otherveg, monthly_precip, niclo_order, 
+                month_survey_order, INF.ALL, TOT.ALL, INF.2017,INF.2016,INF.2015,INF.2014,
+                INF.2013,INF.2012, TOT.2017,TOT.2016, TOT.2015, TOT.2014, TOT.2013, TOT.2012)
 dim(data_ed)   
 dim(data1)
 
@@ -226,4 +228,10 @@ ziformula = ~1 ## zero inflation testing
 
 ## interactions- site type and flow- eg river vs pond and flow
 ## prevalence models- add data
-## binomial models
+## do as binomial models
+
+### 29 DEC 2020
+## reshape prevalence data
+
+
+
