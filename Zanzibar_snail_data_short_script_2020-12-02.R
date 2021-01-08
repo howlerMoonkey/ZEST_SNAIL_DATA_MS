@@ -2,7 +2,7 @@
 ######################################################
 ######## ZANZIBAR ZEST PROJECT SNAIL DATA ANALYSIS
 ######################################################
-setwd("C:\\Users\\murr\\Documents")
+setwd("C:\\Users\\murr\\Desktop\\CURRENT_MANUSCRIPTS_2020\\ZEST_SNAIL_DATA_MS_2020\\ZANZIBAR_SNAIL_DATA_MS")
 getwd()
 
 library(DHARMa)
@@ -26,12 +26,26 @@ library(mgcv)
 library(pscl)
 source("HighstatLibV10.R")
 #source("C:\\Users\\murr\\Documents\\HighstatLibV10.R")
-
 #############################################
 #############################################
+## Metadata
 
-data<-read.csv("ZEST_snail_data_2021-01-01.csv")
+#data<-read.csv("ZEST_snail_data_2021-12-31.csv")
+#list <- lapply(data, class)
+#as.data.frame(list)
+#write.csv(list, "zest_list.csv")
 
+#zest <- read.csv("ZEST_list.csv")  
+#names(zest)
+#zest_meta <-
+#  zest %>%
+#  gather(names, values, orig_row_rec:INF.2012)
+#write.csv(zest_meta, "zest_meta.csv")
+################################################
+################################################
+## Prepare dataset for analysis
+
+data<-read.csv("ZEST_snail_data_2021-01-07.csv")
 dim(data)
 names(data)
 # mutate- transform to as.factor etc where relevant
@@ -50,6 +64,7 @@ data1 <- data %>%
          Wlevel_ed = as.factor(Wlevel_ed),
          Bul_pres_ed = as.factor(as.character(Bul_pres_ed)),
          pres_non_bulinids = as.factor(as.character(pres_non_bulinids)),
+         tot_pres_other_snail = as.factor(tot_pres_other_snail),
          Infsnails = as.factor(as.character(Infsnails)),
          Sprayed_Steffi = as.factor(as.character(Sprayed_Steffi)),
          sprayed_when_Bul_pres = as.factor(as.character(sprayed_when_Bul_pres)),
@@ -58,22 +73,27 @@ data1 <- data %>%
          Temp = scale(Temp, center = 0),
          Sal = scale(Sal, center = 0),
          Oxy = scale(Oxy, center = 0),
-         PH = scale(PH, center = 0))
+         PH = scale(PH, center = 0))%>%
+    group_by(EMU_site_irn) %>% 
+    mutate(latitude = mean(latitude, na.rm = TRUE),
+         longitude = mean(longitude, na.rm = TRUE))
 
 ################################
 ## select relevant columns
 data_ed <- data1 %>%
-  dplyr::select(Bul_pres_ed, Cond, Date_appl_ed, Date_ed, Depth_ed,
+  dplyr::select(Bul_pres_ed, Cond, Oxy, Date_appl_ed, Date_ed, Depth_ed,
                 duration, EMU_site_irn, Flow_ed, Island, Infsnails, Infsnails_no,
-                Oxy, month, N_Duration_min, niclo_visit, no_collected, include,
+                month, Year, N_Duration_min, niclo_visit, no_collected, include,
                 Numberofcollectors, PH, pres_non_bulinids, Ricecombined_Steffi, Sal,
-                Seas, Season, Shehia_cleaned, site_dry_ed, Sprayed_Steffi, 
-                sprayed_when_Bul_pres, TDS, Temp, Village, Visit, wbtype_ed, wbtype_fin,
-                Wbtype2_ed, Wlevel_ed, Year, Ricecombined_Steffi, Wbname_fin,
+                Seas, Season, Shehia_cleaned, site_dry_ed, Sprayed_Steffi, niclo_order, 
+                sprayed_when_Bul_pres, sprayed_but_no_bul, TDS, Temp, Village, Visit, 
+                wbtype_ed, wbtype_fin,Wbtype2_ed, Wlevel_ed, Ricecombined_Steffi, Wbname_fin,
                 Bglob, Bfor, Lym, Mel, Cleo, Pila, Lan, Cera, Neri, Thiara,
-                mud, sand, gravel, rock, concrete, peat, roots, include,
+                mud, sand, gravel, rock, concrete, peat, roots, include, tot_pres_other_snail,
                 Lilies, rushes, rice, waterhyacinth, macrophyteweed, palmfronds,
-                sedge, grass, Polygonum, none, Otherveg, monthly_precip, niclo_order, 
+                sedge, grass, Polygonum, none, Otherveg, monthly_precip, latitude, longitude,
+                Dishes, bathing, Clothes, Carbike, Collectingwater, fording, swimmingplaying, 
+                fishing,Ricecult, otherfarming, sanitation, ablution, Otheract, 
                 month_survey_order, INF.ALL, TOT.ALL, INF.2017,INF.2016,INF.2015,INF.2014,
                 INF.2013,INF.2012, TOT.2017,TOT.2016, TOT.2015, TOT.2014, TOT.2013, TOT.2012)
 dim(data_ed)   
@@ -188,13 +208,6 @@ glmmTMB:::Anova.glmmTMB(nbinom2_m1)
 glmmTMB:::Anova.glmmTMB(nbinom1_m1)
 glmmTMB:::Anova.glmmTMB(poisson_m1)
 
-AICtab(nbinom2, nbinom1, poisson_m1)
-#Error in UseMethod("logLik") : 
-#no applicable method for 'logLik' applied to an object of class "function"
-AICc(nbinom2, nbinom1, poisson_m1, modnames = NULL,
-     second.ord = TRUE, nobs = NULL, sort = TRUE)
-summary(nbinom2)$AICtab ## not working
-
 ## model diganostics
 ## all- no deviation in QQ plot but deviation in residuals
 summary(nbinom1_m1)                    
@@ -202,36 +215,46 @@ sim_residualsnbinom1_m1 <- DHARMa::simulateResiduals(nbinom1_m1, 1000)
 plot(sim_residualsnbinom1_m1)  
 testZeroInflation(sim_residualsnbinom1_m1)
 
-###############################################
-## inbuilt tests- test generic summary stats etc in DHARMa
-#https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html#zero-inflation-k-inflation-or-deficits
-testResiduals(sim_residualsNiclo_m1)
-testTemporalAutocorrelation(sim_residualsNiclo_m1)
-testSpatialAutocorrelation(sim_residualsNiclo_m1)
-testDispersion(sim_residualsNiclo_m1)
-plotResiduals(sim_residualsNiclo_m1, data_ed$Temp)
-testGeneric(sim_residualsNiclo_m1)
-## Checking for missing predictors or quadratic effects
-sim_residualsNiclo_m1$scaledResiduals ## checking for missing predictors or quadratic effects
-plot(sim_residualsNiclo_m1, quantreg = T) ## general plot
-## difficult to see here- becomes clear if plot against the environment
-par(mfrow = c(1,2))
-plotResiduals(sim_residualsNiclo_m1, Niclo_m1$Shehia_cleaned)
-plotResiduals(sim_residualsNiclo_m1, Niclo_m1$Date_ed)
-plotResiduals(sim_residualsNiclo_m1, Niclo_m1$EMU_site_irn)
-plotResiduals(sim_residualsNiclo_m1, Niclo_m1$Monthly.precip)
-countOnes <- function(x) sum(x == 1) # testing for no of 1s
-testGeneric(sim_residualsNiclo_m1, summary = countOnes, alternative = "greater") # 1-inflation
-ziformula = ~1 ## zero inflation testing
-
-######################################### 14 dec
-
+######################################### 
+## 14 dec 2020
 ## interactions- site type and flow- eg river vs pond and flow
-## prevalence models- add data
-## do as binomial models
+## prevalence models- add data; do as binomial models
 
 ### 29 DEC 2020
-## reshape prevalence data
+## reshape prevalence dataset
 
+data <- read.csv("Ung_2011_tot.csv")
+data_spread <- data %>%
+  spread(age_group, tot.2011)
+write.csv(data_spread, "ung_tot-2011.csv")
+## write function as for loop with purrr to iterate for each year
+
+##and merge with main dataset
+data<-read.csv("ZEST_snail_data_key.csv")
+data2 <- read.csv("ZEST_Prevalence_Data_2020-12-31.CSV")
+merga <- merge(data, data2, by = "Shehia_cleaned", all.x = T)
+write.csv(merga, "merge_zest.csv")
+
+### 2 JAN testing prevalence models
+
+prev_m1 <- glmmTMB(INF.ALL/TOT.ALL ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
+                     wbtype_ed + Bul_pres_ed + no_collected + month + 
+                     offset(log(duration)),
+                   weights = TOT.ALL,
+                   data=data_ed,
+                   family=binomial)
+
+## river positive association- is result of Kinyasini? Also Mtopepo and P- Kinowe, Mkanyageni
+## negative association for Bulinus presence, and no_collected - opposite of what expected
+## significant deviation ks test (much more so with random effects and log duration removed below
+## prevalence models adapted from Niger script (why did we remove..)
+
+prev_m1 <- glmmTMB(INF.ALL/TOT.ALL ~ wbtype_fin + Temp + no_collected + Bul_pres_ed,
+                   weights = TOT.ALL,
+                   data=data_ed,
+                   family=binomial)
+
+car::Anova(prev_m1)
+summary(prev_m1)
 
 
