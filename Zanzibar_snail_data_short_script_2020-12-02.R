@@ -63,7 +63,7 @@ data1 <- data %>%
          Wlevel_ed = as.factor(Wlevel_ed),
          Bul_pres_ed = as.factor(as.character(Bul_pres_ed)),
          pres_non_bulinids = as.factor(as.character(pres_non_bulinids)),
-         tot_pres_other_snail = as.factor(tot_pres_other_snail),
+         tot_pres_other_genera = as.factor(tot_pres_other_genera),
          Infsnails = as.factor(as.character(Infsnails)),
          Sprayed_Steffi = as.factor(as.character(Sprayed_Steffi)),
          sprayed_when_Bul_pres = as.factor(as.character(sprayed_when_Bul_pres)),
@@ -82,12 +82,12 @@ data1 <- data %>%
 data_ed <- data1 %>%
   dplyr::select(Bul_pres_ed, Cond, Oxy, Date_appl_ed, Date_ed, Depth_ed, N_Duration_min,
                 duration, EMU_site_irn, Flow_ed, Island, Infsnails, Infsnails_no,
-                month, Year, N_Duration_min, niclo_visit, no_collected, include,
+                month, Year, N_Duration_min, niclo_visit, no_collected, include, niclo_by_site,
                 Numberofcollectors, PH, pres_non_bulinids, Ricecombined_Steffi, Sal,
                 Seas, Season, Shehia_cleaned, site_dry_ed, Sprayed_Steffi, niclo_order, 
                 sprayed_when_Bul_pres, sprayed_but_no_bul, TDS, Temp, Village, Visit, 
                 wbtype_ed, wbtype_fin,Wbtype2_ed, Wlevel_ed, Ricecombined_Steffi, Wbname_fin,
-                Bglob, Bfor, Lym, Mel, Cleo, Pila, Lan, Cera, Neri, Thiara,
+                Bglob, Bfor, Lym, Mel, Cleo, Pila, Lan, Cera, Neri, Thiara, Othsnail,
                 mud, sand, gravel, rock, concrete, peat, roots, include, tot_pres_other_genera,
                 Lilies, rushes, rice, waterhyacinth, macrophyteweed, palmfronds,
                 sedge, grass, Polygonum, none, Otherveg, monthly_precip, latitude, longitude,
@@ -242,18 +242,9 @@ merga <- merge(data, data2, by = "Shehia_cleaned", all.x = T)
 write.csv(merga, "merge_zest.csv")
 
 ######################################### 
-################ MODELS BY DATA TYPE- do presence apbse & count models
+################ MODELS BY DATA TYPE- 
+#do presence/absence binomial & count neg binom models
 
-################ FULL MODEL BINOMIAL
-
-Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
-                      month + Cond  + pres_non_bulinids + monthly_precip + Temp + Depth_ed  + 
-                      wbtype_ed + Flow_ed + Wlevel_ed + Infsnails + 
-                      offset(log(duration)),
-                    data=data_ed,
-                    family=binomial)
-
-## originally converging- not now
 ######################################
 
 ### 2 JAN prevalence models
@@ -272,14 +263,28 @@ prev_m1 <- glmmTMB(INF.ALL/TOT.ALL ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1
 ## Niclosamide data model
 ## add offset of duration of niclosamiding also? offset(log(N_Duration_min))
 ## many other factors- method, volume, no of sprayers etc
+## KS test significant deviation for count model, presence model ok
 Niclo_m1 <- glmmTMB(no_collected ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
                         niclo_visit + 
                         offset(log(duration)),
                       data=data_ed,
                       family=nbinom2)
 
+Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
+                      niclo_by_site +  
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=binomial)
+
+car::Anova(Niclo_m1)
+summary(Niclo_m1)
+sim_residualsNiclo_m1 <- DHARMa::simulateResiduals(Niclo_m1, 1000)  
+plot(sim_residualsNiclo_m1)  
+testZeroInflation(sim_residualsNiclo_m1) 
+
 #####################################
-##model for substrate data
+## model for plant data
+## add interactions eg waterbody type?
 Niclo_m1 <- glmmTMB(no_collected ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
                       Lilies + rushes + rice + waterhyacinth +  macrophyteweed + palmfronds +
                       grass + Polygonum +  
@@ -288,11 +293,10 @@ Niclo_m1 <- glmmTMB(no_collected ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|m
                     family=nbinom2)
 
 #####################################
-## model for plant data
+##model for substrate data
 ## add interactions eg waterbody type?
 Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
-                      Lilies + rushes + rice + waterhyacinth +  macrophyteweed + palmfronds +
-                      grass + Polygonum +  
+                      mud + sand + gravel + rock + concrete + peat + roots +  
                       offset(log(duration)),
                     data=data_ed,
                     family=binomial)
@@ -300,6 +304,7 @@ Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|mo
 #####################################
 ## model for water activities (more relevant for prevalence model but may illuminate 
 ## where are transmission sites- where is more usage- therefore likely transmission)
+
 Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
                       Dishes +bathing + Clothes + Carbike + Collectingwater + fording +
                       swimmingplaying + fishing +Ricecult + otherfarming + sanitation + 
@@ -308,7 +313,7 @@ Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|mo
                     data=data_ed,
                     family=binomial)
 
-## add interaction of waterbody tpye & water activity eg appears-
+## add interaction of waterbody type & water activity eg appears-
 ## swimming/collecting water in large ponds and ablution not in this wbtype- 
 ## poss more likely in streams w tree cover- privacy, flowing water, avoid wbs where water collected etc
 ## add rice-steffi?
@@ -320,14 +325,113 @@ Niclo_m1 <- glmmTMB(no_collected ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|m
                       offset(log(duration)),
                     data=data_ed,
                     family=nbinom2)
-## ablution and wbtype_fin = significant positive correlation
+## ablution and wbtype_fin = significant positive correlation in both models in anova- 
+## and in summary data- significant posivie association for rivers
 
 #####################################
 ## model for water chemistry data
+## double check correlations
+## nothing significant
 
+Niclo_m1 <- glmmTMB(no_collected ~ (1|Shehia_cleaned/EMU_site_irn) +  (1|Date_ed) +
+                      Temp + Cond + Oxy + PH +
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=nbinom2)
 
 #####################################
 ## model for physical water data
+#water level
+
+Niclo_m1 <- glmmTMB(no_collected ~ (1|Shehia_cleaned/EMU_site_irn) +  (1|Date_ed) +
+                      monthly_precip + Flow_ed + Depth_ed + Wlevel_ed + Seas + 
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=nbinom2)
+
+Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
+                      monthly_precip + Flow_ed + Depth_ed + Wlevel_ed + Seas + 
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=binomial)
+
+## association of high depth and water level for presense, and neg assoc for seas low count model
+##
+
+###################################
+## model for other snail genera
+## not converging- remove cera - only 4 rows is present, lymnaea- only 10 rows,
+## an pres_non_bulinids- this will have correlation
+
+Niclo_m1 <- glmmTMB(no_collected ~ (1|Shehia_cleaned/EMU_site_irn) +  (1|Date_ed) +
+                    Mel + Cleo + Pila + Lan + Neri + Thiara + Othsnail + 
+                    tot_pres_other_genera +
+                    offset(log(duration)),
+                    data=data_ed,
+                    family=nbinom2)
+## count model- negative association with Thiara but both ks and disperion tests- signif deviation
+## removed melanoides, neri as v low counts, & Othsnail as no info. 
+## then showed positive assoc of tot_pres_other_genera = 4
+
+Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
+                      Cleo + Pila + Lan + Thiara + 
+                      tot_pres_other_genera +
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=binomial)
+## negative assoc with thiara, positive w Plia (tot_pres_other_genera no effects)
+## still significant deviation ks test
+
+car::Anova(Niclo_m1)
+summary(Niclo_m1)
+sim_residualsNiclo_m1 <- DHARMa::simulateResiduals(Niclo_m1, 1000)  
+plot(sim_residualsNiclo_m1)  
+testZeroInflation(sim_residualsNiclo_m1) 
+
+###################################
+## model for locality, waterbody type
+Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
+                      wbtype_fin + Island +
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=binomial)
+## non convergence- remove +Wbtype2_ed + 
+Niclo_m1 <- glmmTMB(no_collected ~ (1|Shehia_cleaned/EMU_site_irn) +  (1|Date_ed) +
+                      Shehia_cleaned + 
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=nbinom2)
+## shehia_cleaned- non convergence even as single term. look at ecol regions instead
+###################################
+## model for temporal trends
+
+Niclo_m1 <- glmmTMB(Bul_pres_ed ~ (1|Island/Shehia_cleaned/EMU_site_irn) + (1|month/Date_ed) +
+                      Year + month + 
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=binomial)
+  ## year- significant negative association, months 6,7,8,9,11 sig pos assoc, highest for 8
+## can we look at month if is random effect also? same for shehia?
+
+Niclo_m1 <- glmmTMB(no_collected ~ (1|Shehia_cleaned/EMU_site_irn) +  (1|Date_ed) +
+                      Year + month + 
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=nbinom2)
+## hodgepodge
+
+#############################################
+#full model - add all terms
+
+Niclo_m1 <- glmmTMB(no_collected ~ (1|Shehia_cleaned/EMU_site_irn) +  (1|Date_ed) +
+                      niclo_visit + Sprayed_Steffi + Bul_pres_ed + sprayed_when_Bul_pres +
+                      Infsnails_no + Infsnails + Year + Seas + site_dry_ed + month + Visit + 
+                      pres_non_bulinids + wbtype_ed +Wbtype2_ed +monthly_precip +
+                      Wlevel_ed + Sal + Cond + Island + + Depth_ed  + Flow_ed + Temp +
+                      offset(log(duration)),
+                    data=data_ed,
+                    family=nbinom2)
+
 
 glmmTMB::Anova(Niclo_m1)
 Anova.glmmTMB(Niclo_m1)
